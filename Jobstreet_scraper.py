@@ -15,6 +15,8 @@ service = Service(log_pathos=os.devnull)
 options.use_chromium = True
 #options.add_argument("--headless")
 options.add_argument("--disable-gpu")
+current_time = time.localtime()
+formatted_time = time.strftime("%Y-%m-%d %H:%M:%S", current_time)
 
 # Point to Edge driver (skip path if it's in PATH)
 driver = webdriver.Edge(service=service, options=options)
@@ -24,8 +26,8 @@ url = "https://ph.jobstreet.com/junior-data-scientist-jobs/in-Metro-Manila?sortm
 driver.get(url)
    
 try:
-    WebDriverWait(driver, 20).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "a[data-automation='jobTitle']"))
+    WebDriverWait(driver, 60).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-automation='normalJob']"))
     )
 except:
     print("Job listings did not load in time.")
@@ -35,10 +37,31 @@ except:
   
 # Parse page content
 soup = BeautifulSoup(driver.page_source, 'html.parser')
-job_cards = soup.find_all('a', attrs={'data-automation': 'jobTitle'})
-
+job_cards = soup.find_all('article', attrs={'data-automation': 'normalJob'})
+print(f"Got {len(job_cards)} job listings. Displaying Results..")
 for job in job_cards:
-    print(job.prettify())
+    job_title = job.find('a', attrs={'data-automation': 'jobTitle'}).text.strip()
+    
+    job_company = job.find('a', attrs={'data-automation': 'jobCompany'})
+    if not job_company:
+        job_company = job.find('span', attrs={'data-automation': 'jobCompany'})
+    if job_company:
+        company = job_company.text.strip()
+    else:
+        company = 'N/A'
+    
+    #job_location_spans = job.find_all('span', attrs={'data-automation': 'jobLocation'})
+    #location = ', '.join([span.text.strip() for span in job_location_spans])
+    
+    job_listing_date = job.find('span', attrs={'data-automation': 'jobListingDate'}).text.strip()
+    print("Date Obtained:", formatted_time)
+    print(f"Company Name: {company}")
+    print(f"Position: {job_title}")
+    #print(f"Location: {location}")
+    print(f"Listing date: {job_listing_date}")
+    print('')
 
+
+input("Press Enter to continue")
 driver.quit()
 
