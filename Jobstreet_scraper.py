@@ -24,7 +24,8 @@ driver = webdriver.Edge(service=service, options=options)
 # Load JobStreet page
 url = "https://ph.jobstreet.com/junior-data-scientist-jobs/in-Metro-Manila?sortmode=ListedDate"
 driver.get(url)
-   
+ 
+#Let the webpage load and look for job posts in article tag. If none, initiate timeout.  
 try:
     WebDriverWait(driver, 60).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-automation='normalJob']"))
@@ -38,10 +39,19 @@ except:
 # Parse page content
 soup = BeautifulSoup(driver.page_source, 'html.parser')
 job_cards = soup.find_all('article', attrs={'data-automation': 'normalJob'})
+#Verify amount of job posts found
 print(f"Got {len(job_cards)} job listings. Displaying Results..")
+filename = 'jobstreet_jobs.csv'
+job_data = []
+field_names = ['']
+
+#Extract relevant information from each job post
 for job in job_cards:
+    #Name of the job opening
     job_title = job.find('a', attrs={'data-automation': 'jobTitle'}).text.strip()
     
+    #Company name. Some job posts have private advertisers which are under span tags
+    #the if statement checks for those instances
     job_company = job.find('a', attrs={'data-automation': 'jobCompany'})
     if not job_company:
         job_company = job.find('span', attrs={'data-automation': 'jobCompany'})
@@ -50,18 +60,103 @@ for job in job_cards:
     else:
         company = 'N/A'
     
-    #job_location_spans = job.find_all('span', attrs={'data-automation': 'jobLocation'})
-    #location = ', '.join([span.text.strip() for span in job_location_spans])
+    #Job locations are divided into two span tags under one span parent tag. 
+    #Loop on each tag to output one location data
+    job_location_spans = job.find_all('span', attrs={'data-automation': 'jobLocation'})
+    location_parts = []
+    for span in job_location_spans:
+        location_parts.append(span.text.strip())
+    location = ', '.join(location_parts)
     
+    #Job role department
+    job_classification = job.find('span', attrs={'data-automation':'jobSubClassification'})
+    if not job_classification:
+        job_classification = 'N/A'
+    else:
+        job_classification = job_classification.text.strip()
+    
+    #Job role industry
+    job_industry = job.find('span', attrs={'data-automation':'jobClassification'})
+    if not job_industry:
+        job_industry = 'N/A'
+    else:
+        job_industry = job_industry.text.strip()[1:-1]
+    
+    #Monthly salary of job role (if specified)
+    job_salary = job.find('span', attrs={'data-automation':'jobSalary'})
+    if not job_salary:
+        job_salary = 'N/A'
+    else:
+        job_salary = job_salary.text.strip()
+    
+    #Indicates work arrangement if on-site, remote, or hybrid
+    job_setup = job.find('span', attrs={'data-testid':'work-arrangement'})
+    if not job_setup:
+        job_setup = 'N/A'
+    else:
+        job_setup = job_setup.text.strip()[1:-1]
+    
+    #Time posted relative to date of scraping
     job_listing_date = job.find('span', attrs={'data-automation': 'jobListingDate'}).text.strip()
+    
+    #Parse the gathered href to jobstreet website. For later use in gathering required skills
+    job_link = job.find('a', attrs={'data-automation':'job-list-view-job-link'})
+    link_href = job_link.get('href')
+    job_url = "https://ph.jobstreet.com" + link_href if link_href else 'N/A'
+    
+    '''
+    driver.get(job_url)
+ 
+    #Let the webpage load and look for job posts in article tag. If none, initiate timeout.  
+    try:
+        WebDriverWait(driver, 60).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-automation='normalJob']"))
+        )
+    except:
+        print("Job listings did not load in time.")
+        input("Press enter to continue")
+        driver.quit()
+        exit()
+  
+    # Parse page content
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+    job_cards = soup.find_all('article', attrs={'data-automation': 'normalJob'})
+    '''
+    
     print("Date Obtained:", formatted_time)
+    print(f"Link: {job_url}")
     print(f"Company Name: {company}")
     print(f"Position: {job_title}")
-    #print(f"Location: {location}")
+    print(f"Location: {location}")
+    print(f"Classification: {job_classification}")
+    print(f"Industry: {job_industry}")
+    print(f"Salary: {job_salary}")
+    print(f"Work Arrangement: {job_setup}")
     print(f"Listing date: {job_listing_date}")
     print('')
 
-
+    #Get a key-value pair for each result and attach the resulting pair to the overall job data
+    job_data_entry = job_data.append({
+        'Date Obtained': formatted_time,
+        'Link' : job_url,
+        'Company' : company,
+        'Position' : job_title,
+        'Location' : location,
+        'Classification' : job_classification,
+        'Industry' : job_industry,
+        'Salary' : job_salary,
+        'Work Arrangement' : job_setup,
+        'Day Posted' : job_listing_date
+    })
+    print('')    
+   
+field_names = job_data[0].keys()
+with open(filename, mode = 'w', newline = '', encoding = 'utf-8-sig') as file:
+        writer = csv.DictWriter(file, fieldnames = field_names)
+        writer.writeheader()
+        writer.writerows(job_data)
+        
+print(f'Done saving {len(job_cards)} job listings on {filename}')
 input("Press Enter to continue")
 driver.quit()
 
