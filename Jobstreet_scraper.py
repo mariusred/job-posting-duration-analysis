@@ -52,7 +52,8 @@ def wait_for_website(web_url):
     except:
         print('Job listings did not load in time.')
         time.sleep(5)
-        driver.quit()
+        if not job_data:
+            driver.quit()
         return
 
 def parse_page_contents(web_url, first_page = True):
@@ -242,5 +243,3 @@ else:
 print(f'Done saving {len(job_data)} job listings on {filename}')
 time.sleep(10)
 driver.quit()
-
-
