@@ -31,10 +31,9 @@ driver = webdriver.Edge(service=service, options=options)
 url = 'https://ph.jobstreet.com/junior-data-scientist-jobs/in-Metro-Manila?sortmode=ListedDate'
 
 
-#filename = 'jobstreet_jobs.csv'
-filename = 'change_save_flow_test2.csv'
-job_data = []
-#is_file_exiting = os.path.exists(filename)
+filename = 'jobstreet_jobs.csv'
+
+job_data = []                    
 
 def initialize_csv(filename):
     """ Creates a blank csv file to save results
@@ -63,7 +62,7 @@ def append_to_file (job_data, filename):
         job_data: list of dictionaries of job listing information
         filename: string of csv name that will contain scraped job posts.
     Returns:
-        None
+        saved_jobs: int of total number of jobs appended
     """
     field_names = job_data[0].keys()
     file_is_empty = os.stat(filename).st_size == 0
@@ -127,7 +126,7 @@ def parse_page_contents(web_url, first_page = True):
         search_pages = math.ceil(int(job_total) / len(job_cards))
     
         #Verify amount of job posts found
-        print(f'Got {int(job_total) - 4} job listings across {search_pages} pages. Displaying {len(job_cards)} Results..')
+        print(f'Got {int(job_total)} job listings across {search_pages} pages. Displaying {len(job_cards)} Results..')
         print(f'Number of jobs in this page: {len(job_cards)}')
         
         return job_cards, job_total, search_pages
@@ -143,10 +142,9 @@ def parse_multiple_pages(search_pages, web_url, saved_jobs_count):
     Args:
         search_pages: integer number of search pages for total amount of jobs
         web_url: string of website url to load.
+        saved_jobs_count: int amount of jobs saved to csv on first page
     Returns:
-        job_cards: iterable query result for all job postings in a page
-        job_total: integer total amount of jobs found
-        search_pages: integer number of search pages for total amount of jobs
+        saved_jobs_count: int running total amount of jobs saved to csv
     """
 
     url_parts = web_url.partition('?')
@@ -172,7 +170,7 @@ def extract_job_data(job_cards):
     Args:
         job_cards: iterable query result for all job postings in a page
     Returns:
-        None
+        job_data: list of dictionaries for job data infornmation in a page
     """
     for job in job_cards:
         job_title = job.find('a', attrs={'data-automation': 'jobTitle'}).text.strip()
@@ -251,5 +249,5 @@ if search_pages > 1:
     total_saved_jobs = parse_multiple_pages(search_pages,url,saved_jobs_count)
 
 print(f'Done saving {total_saved_jobs} job listings on {filename}')
-time.sleep(10)
+time.sleep(5)
 driver.quit()
