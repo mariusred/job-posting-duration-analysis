@@ -33,9 +33,54 @@ url = 'https://ph.jobstreet.com/junior-data-scientist-jobs/in-Metro-Manila?sortm
 
 filename = 'jobstreet_jobs.csv'
 
-job_data = []
-is_file_exiting = os.path.exists(filename)
+job_data = []                    
 
+def initialize_csv(filename):
+    """ Creates a blank csv file to save results
+    
+    Args:
+        filename: string of csv file name .
+    Returns:
+        None
+    """
+    file_existing = os.path.exists(filename)
+    
+    if not file_existing:
+        print(f'No filename found. Creating {filename}...')
+        with open(filename, mode = 'w', newline = '', encoding = 'utf-8-sig') as file:
+            pass
+    else:
+        print(f'Filename found. Results to be saved in {filename}' )
+        return
+
+def append_to_file (job_data, filename):
+    """ Appends scraping results to an existing csv filename.
+
+        If csv is empty, create headers according to job_data keys
+
+    Args:
+        job_data: list of dictionaries of job listing information
+        filename: string of csv name that will contain scraped job posts.
+    Returns:
+        saved_jobs: int of total number of jobs appended
+    """
+    field_names = job_data[0].keys()
+    file_is_empty = os.stat(filename).st_size == 0
+    
+    if not job_data:
+        print('No data found.')
+        return
+    else:
+        print(f'Attaching {len(job_data)} job listings on {filename}')
+        with open(filename, mode = 'a', newline = '', encoding = 'utf-8-sig') as file:
+            writer = csv.DictWriter(file, fieldnames = field_names)
+            if file_is_empty:
+                writer.writeheader()
+            writer.writerows(job_data)
+        saved_jobs = len(job_data)
+        job_data.clear()
+        return saved_jobs
+        
 def wait_for_website(web_url):
     """ Waits for a website to load contents that are classified as normal jobs.
 
@@ -78,17 +123,17 @@ def parse_page_contents(web_url, first_page = True):
     
     if first_page:
         job_total = soup.find('span', attrs={'data-automation': 'totalJobsCount'}).text.strip()
-        search_pages = math.ceil((int(job_total) - 4) / len(job_cards))
+        search_pages = math.ceil(int(job_total) / len(job_cards))
     
         #Verify amount of job posts found
-        print(f'Got {int(job_total) - 4} job listings across {search_pages} pages. Displaying {len(job_cards)} Results..')
+        print(f'Got {int(job_total)} job listings across {search_pages} pages. Displaying {len(job_cards)} Results..')
         print(f'Number of jobs in this page: {len(job_cards)}')
         
         return job_cards, job_total, search_pages
     else:
         return job_cards, None, None
     
-def parse_multiple_pages(search_pages, web_url):
+def parse_multiple_pages(search_pages, web_url, saved_jobs_count):
     """ Parses website contents for all job postings in succeeding search pages.
        
         Partitions the url into segments to include the page number segment in url.
@@ -97,10 +142,9 @@ def parse_multiple_pages(search_pages, web_url):
     Args:
         search_pages: integer number of search pages for total amount of jobs
         web_url: string of website url to load.
+        saved_jobs_count: int amount of jobs saved to csv on first page
     Returns:
-        job_cards: iterable query result for all job postings in a page
-        job_total: integer total amount of jobs found
-        search_pages: integer number of search pages for total amount of jobs
+        saved_jobs_count: int running total amount of jobs saved to csv
     """
 
     url_parts = web_url.partition('?')
@@ -110,10 +154,11 @@ def parse_multiple_pages(search_pages, web_url):
         
         job_cards, _, _ = parse_page_contents(next_page, first_page = False)
         print(f'Number of jobs in page {page}: {len(job_cards)}')
-        
-        extract_job_data(job_cards)
+        page_job_data = extract_job_data(job_cards)
+        saved_jobs_count += append_to_file(page_job_data, filename)
+
         time.sleep(5)
-    return
+    return saved_jobs_count
 
 def extract_job_data(job_cards):
     """ Parses website contents for all job postings in succeeding search pages.
@@ -125,7 +170,7 @@ def extract_job_data(job_cards):
     Args:
         job_cards: iterable query result for all job postings in a page
     Returns:
-        None
+        job_data: list of dictionaries for job data infornmation in a page
     """
     for job in job_cards:
         job_title = job.find('a', attrs={'data-automation': 'jobTitle'}).text.strip()
@@ -190,56 +235,19 @@ def extract_job_data(job_cards):
             'Work Arrangement' : job_setup,
             'Day Posted' : job_listing_date
         })
-    return
+    return job_data
 
-def create_csv (filename):
-    """ Creates a csv file to store results if filename does not exist
-
-        Job data key-value pairs are written in rows to log job post.
-
-    Args:
-        filename: string of csv name that will contain scraped job posts.
-    Returns:
-        None
-    """
-    print(f'No filename found. Creating {filename}...')
-    print(f'Attaching {len(job_data)} job listings on {filename}')
-    field_names = job_data[0].keys()
-    with open(filename, mode = 'w', newline = '', encoding = 'utf-8-sig') as file:
-            writer = csv.DictWriter(file, fieldnames = field_names)
-            writer.writeheader()
-            writer.writerows(job_data)
-
-def append_results_to_csv (filename):
-    """ Appends scraping results to an existing csv filename.
-
-        Acts as running reference of job posts for the project.
-
-    Args:
-        filename: string of csv name that will contain scraped job posts.
-    Returns:
-        None
-    """
-    print(f'Attaching {len(job_data)} job listings on {filename}')
-    field_names = job_data[0].keys()
-    with open(filename, mode = 'a', newline = '', encoding = 'utf-8-sig') as file:
-        writer = csv.DictWriter(file, fieldnames = field_names)
-        writer.writerows(job_data)
-        
-wait_for_website(url)   
-
+initialize_csv(filename)
+       
+wait_for_website(url)
 job_cards, job_total, search_pages = parse_page_contents(url)
-extract_job_data(job_cards)
+page_job_data = extract_job_data(job_cards)
+saved_jobs_count = append_to_file(page_job_data, filename)
 time.sleep(5)
 
 if search_pages > 1:
-    parse_multiple_pages(search_pages,url)
-    
-if not is_file_exiting:
-    create_csv(filename)
-else:        
-    append_results_to_csv(filename)
+    total_saved_jobs = parse_multiple_pages(search_pages,url,saved_jobs_count)
 
-print(f'Done saving {len(job_data)} job listings on {filename}')
-time.sleep(10)
+print(f'Done saving {total_saved_jobs} job listings on {filename}')
+time.sleep(5)
 driver.quit()
