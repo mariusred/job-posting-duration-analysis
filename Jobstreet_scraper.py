@@ -30,9 +30,7 @@ driver = webdriver.Edge(service=service, options=options)
 # Load JobStreet page and divide it into sections that will be concatenated when accessing other pages
 url = 'https://ph.jobstreet.com/junior-data-scientist-jobs/in-Metro-Manila?sortmode=ListedDate'
 
-
-#filename = 'jobstreet_jobs.csv'
-filename = 'excess_page_testing4.csv'
+filename = 'jobstreet_jobs.csv'
 
 job_data = []                    
 
@@ -72,16 +70,18 @@ def append_to_file (job_data, filename):
         field_names = job_data[0].keys()
         file_is_empty = os.stat(filename).st_size == 0
         print(f'Attaching {len(job_data)} job listings on {filename}')
+
         with open(filename, mode = 'a', newline = '', encoding = 'utf-8-sig') as file:
             writer = csv.DictWriter(file, fieldnames = field_names)
             if file_is_empty:
                 writer.writeheader()
             writer.writerows(job_data)
+
         saved_jobs = len(job_data)
         job_data.clear()
     
     return saved_jobs
-        
+  
 def wait_for_website(web_url):
     """ Waits for a website to load contents that are classified as normal jobs.
 
@@ -160,8 +160,6 @@ def parse_multiple_pages(search_pages, web_url, saved_jobs_count):
             page_job_data = extract_job_data(job_cards)
             saved_jobs_count += append_to_file(page_job_data, filename)
             time.sleep(5)
-            
-    return saved_jobs_count
 
 def extract_job_data(job_cards):
     """ Parses website contents for all job postings in succeeding search pages.
