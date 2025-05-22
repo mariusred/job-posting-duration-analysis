@@ -32,29 +32,81 @@ url = 'https://ph.jobstreet.com/junior-data-scientist-jobs/in-Metro-Manila?sortm
 
 
 filename = 'jobstreet_jobs.csv'
+<<<<<<< Updated upstream
 
 job_data = []
 is_file_exiting = os.path.exists(filename)
 
+=======
+job_data = []                    
+
+def initialize_csv(filename):
+    """ Creates a blank csv file to save results
+    
+    Args:
+        filename: string of csv file name .
+    Returns:
+        None
+    """
+    file_existing = os.path.exists(filename)
+    
+    if not file_existing:
+        print(f'No filename found. Creating {filename}...')
+        with open(filename, mode = 'w', newline = '', encoding = 'utf-8-sig') as file:
+            pass
+    else:
+        print(f'Filename found. Results to be saved in {filename}' )
+        return
+
+def append_to_file (job_data, filename):
+    """ Appends scraping results to an existing csv filename.
+
+        If csv is empty, create headers according to job_data keys
+
+    Args:
+        job_data: list of dictionaries of job listing information
+        filename: string of csv name that will contain scraped job posts.
+    Returns:
+        saved_jobs: int of total number of jobs appended
+    """
+    saved_jobs = len(job_data)
+    if not job_data:
+        print('No data found.')
+    else:
+        field_names = job_data[0].keys()
+        file_is_empty = os.stat(filename).st_size == 0
+        print(f'Attaching {len(job_data)} job listings on {filename}')
+        
+        with open(filename, mode = 'a', newline = '', encoding = 'utf-8-sig') as file:
+            writer = csv.DictWriter(file, fieldnames = field_names)
+            if file_is_empty:
+                writer.writeheader()
+            writer.writerows(job_data)
+        
+        saved_jobs = len(job_data)
+        job_data.clear()
+    
+    return saved_jobs
+        
+>>>>>>> Stashed changes
 def wait_for_website(web_url):
     """ Waits for a website to load contents that are classified as normal jobs.
 
     Args:
         web_url: string of website url to load.
     Returns:
-       None
+       bool: True if website properly loads.
+             False if website did not load. 
     """
     driver.get(web_url)  
     try:
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-automation='normalJob']"))
         )
+        return True
     except:
         print('Job listings did not load in time.')
-        time.sleep(5)
-        if not job_data:
-            driver.quit()
-        return
+        return False
 
 def parse_page_contents(web_url, first_page = True):
     """ Parses website contents for all job postings.
@@ -107,6 +159,7 @@ def parse_multiple_pages(search_pages, web_url):
     for page in range(2, search_pages + 1):
         next_page = f'{url_parts[0]}{url_parts[1]}page={str(page)}&{url_parts[2]}'
         wait_for_website(next_page)
+<<<<<<< Updated upstream
         
         job_cards, _, _ = parse_page_contents(next_page, first_page = False)
         print(f'Number of jobs in page {page}: {len(job_cards)}')
@@ -114,6 +167,19 @@ def parse_multiple_pages(search_pages, web_url):
         extract_job_data(job_cards)
         time.sleep(5)
     return
+=======
+        if not wait_for_website:
+            print(f'No job posting found on page {page}.')
+            break
+        else:
+            job_cards, _, _ = parse_page_contents(next_page, first_page = False)
+            print(f'Number of jobs in page {page}: {len(job_cards)}')
+            page_job_data = extract_job_data(job_cards)
+            saved_jobs_count += append_to_file(page_job_data, filename)
+            time.sleep(5)
+    
+    return saved_jobs_count
+>>>>>>> Stashed changes
 
 def extract_job_data(job_cards):
     """ Parses website contents for all job postings in succeeding search pages.
