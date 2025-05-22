@@ -31,7 +31,8 @@ driver = webdriver.Edge(service=service, options=options)
 url = 'https://ph.jobstreet.com/junior-data-scientist-jobs/in-Metro-Manila?sortmode=ListedDate'
 
 
-filename = 'jobstreet_jobs.csv'
+#filename = 'jobstreet_jobs.csv'
+filename = 'excess_page_testing4.csv'
 
 job_data = []                    
 
@@ -64,13 +65,12 @@ def append_to_file (job_data, filename):
     Returns:
         saved_jobs: int of total number of jobs appended
     """
-    field_names = job_data[0].keys()
-    file_is_empty = os.stat(filename).st_size == 0
-    
+    saved_jobs = len(job_data)
     if not job_data:
         print('No data found.')
-        return
     else:
+        field_names = job_data[0].keys()
+        file_is_empty = os.stat(filename).st_size == 0
         print(f'Attaching {len(job_data)} job listings on {filename}')
         with open(filename, mode = 'a', newline = '', encoding = 'utf-8-sig') as file:
             writer = csv.DictWriter(file, fieldnames = field_names)
@@ -79,7 +79,8 @@ def append_to_file (job_data, filename):
             writer.writerows(job_data)
         saved_jobs = len(job_data)
         job_data.clear()
-        return saved_jobs
+    
+    return saved_jobs
         
 def wait_for_website(web_url):
     """ Waits for a website to load contents that are classified as normal jobs.
@@ -87,19 +88,18 @@ def wait_for_website(web_url):
     Args:
         web_url: string of website url to load.
     Returns:
-       None
+       bool: True if website properly loads.
+             False if website did not load.
     """
     driver.get(web_url)  
     try:
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-automation='normalJob']"))
         )
+        return True
     except:
         print('Job listings did not load in time.')
-        time.sleep(5)
-        if not job_data:
-            driver.quit()
-        return
+        return False
 
 def parse_page_contents(web_url, first_page = True):
     """ Parses website contents for all job postings.
@@ -148,16 +148,19 @@ def parse_multiple_pages(search_pages, web_url, saved_jobs_count):
     """
 
     url_parts = web_url.partition('?')
-    for page in range(2, search_pages + 1):
+    for page in range(2, search_pages + 2):
         next_page = f'{url_parts[0]}{url_parts[1]}page={str(page)}&{url_parts[2]}'
         wait_for_website(next_page)
-        
-        job_cards, _, _ = parse_page_contents(next_page, first_page = False)
-        print(f'Number of jobs in page {page}: {len(job_cards)}')
-        page_job_data = extract_job_data(job_cards)
-        saved_jobs_count += append_to_file(page_job_data, filename)
-
-        time.sleep(5)
+        if not wait_for_website:
+            print(f'No job posting found on page {page}.')
+            break
+        else:
+            job_cards, _, _ = parse_page_contents(next_page, first_page = False)
+            print(f'Number of jobs in page {page}: {len(job_cards)}')
+            page_job_data = extract_job_data(job_cards)
+            saved_jobs_count += append_to_file(page_job_data, filename)
+            time.sleep(5)
+            
     return saved_jobs_count
 
 def extract_job_data(job_cards):
