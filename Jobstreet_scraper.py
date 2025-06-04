@@ -30,8 +30,8 @@ driver = webdriver.Edge(service=service, options=options)
 # Load JobStreet page and divide it into sections that will be concatenated when accessing other pages
 url = 'https://ph.jobstreet.com/junior-data-scientist-jobs/in-Metro-Manila?sortmode=ListedDate'
 
-#filename = 'jobstreet_jobs.csv'
-job_data = []                    
+filename = 'jobstreet_jobs.csv'
+job_data = []
 
 def initialize_csv(filename):
     """ Creates a blank csv file to save results
@@ -120,7 +120,12 @@ def parse_page_contents(web_url, first_page = True):
     job_cards = soup.find_all('article', attrs={'data-automation': 'normalJob'})
     
     if first_page:
-        job_total = soup.find('span', attrs={'data-automation': 'totalJobsCount'}).text.strip()
+        job_total_div = soup.find('div', attrs={'data-automation': 'totalJobsCountBcues'})
+        if job_total_div:
+            job_total = job_total_div.find('span').text.strip().split(' ')[0]
+        else:
+            job_total = soup.find('span', attrs={'data-automation': 'totalJobsCount'}).text.strip()    
+        
         search_pages = math.ceil(int(job_total) / len(job_cards))
     
         #Verify amount of job posts found
